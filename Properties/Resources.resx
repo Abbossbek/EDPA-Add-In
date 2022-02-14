@@ -124,4 +124,11 @@
   <data name="img_282126" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\img_282126.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="footerText" xml:space="preserve">
+    <value>CERTIFICATION 
+I certify that the foregoing is a correct transcript from the electronic sound recording of the proceedings in the above- entitled matter. 
+
+________________________________       ______________ 
+Signature of Transcriber                 Date</value>
+  </data>
 </root>

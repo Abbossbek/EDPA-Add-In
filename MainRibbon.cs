@@ -41,8 +41,8 @@ namespace EDPA_Add_In
                 }
                 File.Copy(Settings.Default.TemplateFilePath, dialog.FileName, true);
                 var newDoc = Globals.ThisAddIn.Application.Documents.Open(dialog.FileName);
-                var startIndex = text.IndexOf("(10:03 o'clock a.m.)") + 20;
-                text = text.Substring(startIndex).Replace("\r\r", "\r").Trim();
+                var startIndex = text.IndexOf("\r\r", text.IndexOf("PROCEEDINGS"));
+                text = $"{text.Substring(startIndex).Replace("\r\r", "\r").Trim()}\r{Resources.footerText}";
                 bool byAnyOne = false;
                 foreach (var item in text.Split('\r'))
                 {
@@ -51,24 +51,37 @@ namespace EDPA_Add_In
                         byAnyOne = true;
                         newDoc.Paragraphs.Last.Range.Text = $"{item.Substring(0, item.IndexOf("EXAMINATION") + 11)}\r";
                         newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
-                        newDoc.Paragraphs.Last.Range.Text = item.Substring(item.IndexOf(" BY ")) + "\r";
+                        newDoc.Paragraphs.Last.Range.Text = $"{item.Substring(item.IndexOf(" BY "))}\r";
+                    }
+                    else if (item.Contains("CERTIFICATION"))
+                    {
+                        newDoc.Paragraphs.Last.Range.Text = $"\r\r\r\r\r\r{item}\r";
+                        newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
+                    }
+                    else if(item.Contains("the court was adjourned"))
+                    {
+                        continue;
                     }
                     else
                     {
-                        foreach (var keyValue in variables)
-                        {
-                            if (item.Contains(keyValue.Key))
+                        if (variables.Keys.Any(x => item.Contains(x)))
+                            foreach (var keyValue in variables)
                             {
-                                if (byAnyOne)
+                                if (item.Contains(keyValue.Key))
                                 {
-                                    newDoc.Paragraphs.Last.Range.Text = $"{item.Replace(keyValue.Key, $"{Regex.Replace(keyValue.Key, @"[\d-]", string.Empty)}")}\r";
+                                    if (byAnyOne)
+                                    {
+                                        newDoc.Paragraphs.Last.Range.Text = $"{item.Replace(keyValue.Key, $"{Regex.Replace(keyValue.Key, @"[\d-]", string.Empty)}")}\r";
+                                    }
+                                    else
+                                    {
+                                        newDoc.Paragraphs.Last.Range.Text = $"{item.Replace(keyValue.Key, $"\t\t{keyValue.Value}")}\r";
+                                    }
                                 }
-                                else
-                                {
-                                    newDoc.Paragraphs.Last.Range.Text = $"{item.Replace(keyValue.Key, $"\t\t{keyValue.Value}")}\r";
-                                }
+
                             }
-                        }
+                        else
+                            newDoc.Paragraphs.Last.Range.Text = $"{item}\r";
                     }
                 }
 
