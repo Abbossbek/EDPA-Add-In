@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace EDPA_Add_In
@@ -36,16 +37,63 @@ namespace EDPA_Add_In
                 foreach (var row in variablesText.Split('\r'))
                 {
                     var values = row.Contains('(') ? row.Remove(row.IndexOf('(')).Split(':') : row.Split(':');
-                    variables.Add(values[0].Trim(), values[1].Trim());
+                    variables.Add($"{values[0].Trim()}:", $"{values[1].Trim()}:");
                 }
                 File.Copy(Settings.Default.TemplateFilePath, dialog.FileName, true);
                 var newDoc = Globals.ThisAddIn.Application.Documents.Open(dialog.FileName);
-                text = text.Substring(text.IndexOf("(10:03 o'clock a.m.)") + 20);
-                foreach (var item in variables)
+                var startIndex = text.IndexOf("(10:03 o'clock a.m.)") + 20;
+                text = text.Substring(startIndex).Replace("\r\r", "\r").Trim();
+                bool byAnyOne = false;
+                foreach (var item in text.Split('\r'))
                 {
-                    text = text.Replace($"{item.Key}:", $"{item.Value}:").Replace("\r\r", "\r").Trim();
+                    if (item.Contains("EXAMINATION"))
+                    {
+                        byAnyOne = true;
+                        newDoc.Paragraphs.Last.Range.Text = $"{item.Substring(0, item.IndexOf("EXAMINATION") + 11)}\r";
+                        newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
+                        newDoc.Paragraphs.Last.Range.Text = item.Substring(item.IndexOf(" BY ")) + "\r";
+                    }
+                    else
+                    {
+                        foreach (var keyValue in variables)
+                        {
+                            if (item.Contains(keyValue.Key))
+                            {
+                                if (byAnyOne)
+                                {
+                                    newDoc.Paragraphs.Last.Range.Text = $"{item.Replace(keyValue.Key, $"{Regex.Replace(keyValue.Key, @"[\d-]", string.Empty)}")}\r";
+                                }
+                                else
+                                {
+                                    newDoc.Paragraphs.Last.Range.Text = $"{item.Replace(keyValue.Key, $"\t\t{keyValue.Value}")}\r";
+                                }
+                            }
+                        }
+                    }
                 }
-                newDoc.Paragraphs.Last.Range.Text = text;
+
+                //var directExamIndex = text.IndexOf("DIRECT EXAMINATION");
+                //var firstPart = text.Substring(startIndex, directExamIndex - startIndex);
+                //foreach (var item in variables)
+                //{
+                //    firstPart = firstPart.Replace($"{item.Key}:", $"\t\t{item.Value}:").Replace("\r\r", "\r").Trim();
+                //}
+                //newDoc.Paragraphs.Last.Range.Text = firstPart + "\r";
+
+                //newDoc.Paragraphs.Last.Range.Text = "DIRECT EXAMINATION\r";
+                //newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
+
+                //var crossExamIndex = text.IndexOf("CROSS EXAMINATION");
+                //var secondPart = text.Substring(directExamIndex, crossExamIndex - directExamIndex);
+                //secondPart = secondPart.Substring(secondPart.IndexOf(" BY "));
+                //newDoc.Paragraphs.Last.Range.Text = secondPart + "\r";
+
+                //newDoc.Paragraphs.Last.Range.Text = "CROSS EXAMINATION\r";
+                //newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
+
+                //var thirdPart = text.Substring(crossExamIndex, crossExamIndex - directExamIndex);
+                //secondPart = secondPart.Substring(secondPart.IndexOf(" BY "));
+                //newDoc.Paragraphs.Last.Range.Text = secondPart + "\r";
                 //var page = newDoc.GoTo(WdGoToItem.wdGoToPage, WdGoToDirection.wdGoToAbsolute, 3, 3);
                 //page.Bookmarks["\\Page"].Range.Delete();
 
