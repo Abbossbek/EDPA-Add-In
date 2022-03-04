@@ -15,8 +15,8 @@ namespace EDPA_Add_In
 {
     public partial class MainRibbon
     {
-        private static string[] keywords = new string[] {"objection", "relevance", "no further questions"};
-    private void MainRibbon_Load(object sender, RibbonUIEventArgs e)
+        private static string[] keywords = new string[] { "objection", "relevance", "no further questions" };
+        private void MainRibbon_Load(object sender, RibbonUIEventArgs e)
         {
 
         }
@@ -32,103 +32,105 @@ namespace EDPA_Add_In
             dialog.Filter = "Document|*.docx";
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                var text = Globals.ThisAddIn.Application.ActiveDocument.Range(0, Globals.ThisAddIn.Application.ActiveDocument.Characters.Count).Text;
-                var variablesText = text.Substring(0, text.IndexOf("PROCEEDINGS")).Trim();
+                var inputDoc = Globals.ThisAddIn.Application.ActiveDocument;
+                var text = inputDoc.Range(0, inputDoc.Characters.Count).Text;
+                var variablesText = inputDoc.Range(0, text.IndexOf("PROCEEDINGS"));
                 var variables = new Dictionary<string, string>();
-                foreach (var row in variablesText.Split('\r'))
+                foreach (Paragraph parag in variablesText.Paragraphs)
                 {
-                    var values = row.Contains('(') ? row.Remove(row.IndexOf('(')).Split(':') : row.Split(':');
-                    variables.Add($"{values[0].Trim()}:", $"{values[1].Trim()}:");
+                    if (!parag.Range.Text.Equals("\r"))
+                    {
+                        var values = parag.Range.Text.Contains('(') ? parag.Range.Text.Remove(parag.Range.Text.IndexOf('(')).Split(':') : parag.Range.Text.Split(':');
+                        variables.Add($"{values[0].Trim()}:", $"{values[1].Trim()}:");
+                    }
                 }
                 File.Copy(Settings.Default.TemplateFilePath, dialog.FileName, true);
                 var newDoc = Globals.ThisAddIn.Application.Documents.Open(dialog.FileName);
                 var startIndex = text.IndexOf("\r\r", text.IndexOf("PROCEEDINGS"));
-                text = $"{text.Substring(startIndex).Replace("\r\r", "\r").Trim()}\r{Resources.footerText}";
+                //text = $"{text.Substring(startIndex).Replace("\r\r", "\r").Trim()}\r{Resources.footerText}";
                 string A = null, Q = null, lastSpeaked = null;
                 bool defaultSetting = false;
-                var lines = text.Split('\r');
-                for (int i = 0; i < lines.Length - 1; i++)
+                Paragraphs lines = inputDoc.Range(startIndex).Paragraphs;
+
+                for (int i = 1; i < lines.Count - 1; i++)
                 {
-                    if (lines[i].Contains("EXAMINATION"))
+                    if (lines[i].Range.Text.Contains("the court was adjourned") || string.IsNullOrWhiteSpace(lines[i].Range.Text))
                     {
-                        newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Substring(0, lines[i].IndexOf("EXAMINATION") + 11)}\r";
+                        continue;
+                    }
+                    else if (lines[i].Range.Text.Contains("EXAMINATION"))
+                    {
+                        newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Substring(0, lines[i].Range.Text.IndexOf("EXAMINATION") + 11)}\r";
                         newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
-                        var q = lines[i].Substring(lines[i].IndexOf(" BY "));
-                        var a = lines[i].Remove(lines[i].IndexOf(" BY ")).Substring(lines[i].IndexOf(" OF ")) + ":";
+                        var q = lines[i].Range.Text.Substring(lines[i].Range.Text.IndexOf(" BY "));
+                        var a = lines[i].Range.Text.Remove(lines[i].Range.Text.IndexOf(" BY ")).Substring(lines[i].Range.Text.IndexOf(" OF ")) + ":";
                         newDoc.Paragraphs.Last.Range.Text = $"{q}\r";
                         Q = variables.FirstOrDefault(x => x.Value == q.Substring(4).Trim()).Key;
                         A = variables.FirstOrDefault(x => x.Value == a.Substring(4).Trim()).Key;
                         defaultSetting = true;
                         lastSpeaked = null;
                     }
-                    else if (lines[i].Contains("CERTIFICATION"))
+                    else if (lines[i].Range.Text.Contains("CERTIFICATION"))
                     {
                         newDoc.Paragraphs.Last.Range.Text = $"\r\r\r\r\r\r{lines[i]}\r";
                         newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                     }
-                    else if (lines[i].Contains("the court was adjourned"))
-                    {
-                        continue;
-                    }
                     else
                     {
-                        if (variables.Keys.Any(x => lines[i].Contains(x)))
+                        if (variables.Keys.Any(x => lines[i].Range.Text.Contains(x)))
                             foreach (var keyValue in variables)
                             {
-                                if (lines[i].Contains(keyValue.Key))
+                                if (lines[i].Range.Text.Contains(keyValue.Key))
                                 {
-                                    if (Q != null && lines[i].StartsWith(Q))
+                                    if (Q != null && lines[i].Range.Text.StartsWith(Q))
                                     {
-                                        if (keywords.Any(x => lines[i].ToLower().Contains(x)))
+                                        if (keywords.Any(x => lines[i].Range.Text.ToLower().Contains(x)))
                                         {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(Q, $"\t\t{variables[Q]}")}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"\t\t{variables[Q]}").TrimEnd()}\r";
                                             continue;
                                         }
                                         if (lastSpeaked == A || lastSpeaked == Q || lastSpeaked == null)
                                         {
                                             if (!defaultSetting)
                                             {
-                                                newDoc.Paragraphs.Last.Range.Text = $"BY {variables[Q]}\r";
+                                                newDoc.Paragraphs.Last.Range.Text = $"BY {variables[Q].TrimEnd()}\r";
                                                 defaultSetting = true;
                                             }
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(Q, $"{Regex.Replace(Q, @"[\d-]", string.Empty)}")}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"{Regex.Replace(Q, @"[\d-]", string.Empty)}").TrimEnd()}\r";
                                         }
                                         else if (!defaultSetting)
                                         {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(Q, $"\t\t{variables[Q]}")}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"\t\t{variables[Q]}").TrimEnd()}\r";
                                         }
                                         lastSpeaked = Q;
                                     }
-                                    else if (A != null && lines[i].StartsWith(A))
+                                    else if (A != null && lines[i].Range.Text.StartsWith(A))
                                     {
-                                        if (defaultSetting)
+                                        if (defaultSetting || lines[i + 1].Range.Text.StartsWith(Q) || lines[i].Range.HighlightColorIndex == WdColorIndex.wdYellow)
                                         {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}")}\r";
-                                        }
-                                        else if (lines[i + 1].StartsWith(Q))
-                                        {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}")}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}").TrimEnd()}\r";
                                         }
                                         else
                                         {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(A, $"\t\t{variables[A]}")}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"\t\t{variables[A]}").TrimEnd()}\r";
                                         }
                                         lastSpeaked = A;
                                     }
                                     else
                                     {
-                                        newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Replace(keyValue.Key, $"\t\t{keyValue.Value}")}\r";
+                                        newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(keyValue.Key, $"\t\t{keyValue.Value}").TrimEnd()}\r";
                                         defaultSetting = false;
                                         lastSpeaked = keyValue.Key;
                                     }
                                 }
 
                             }
-                        else
-                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i]}\r";
+                        else 
+                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.TrimEnd()}\r";
                     }
                 }
-                newDoc.Paragraphs.Last.Range.Text = $"{lines.Last()}\r";
+                newDoc.Paragraphs.Last.Range.Text = $"{lines.Last.Range.Text}\r";
+                newDoc.Paragraphs.Last.Range.Text = $"{Resources.footerText}\r";
 
                 //var directExamIndex = text.IndexOf("DIRECT EXAMINATION");
                 //var firstPart = text.Substring(startIndex, directExamIndex - startIndex);
@@ -157,7 +159,6 @@ namespace EDPA_Add_In
 
             }
         }
-
         private void btnSelectTemplate_Click(object sender, RibbonControlEventArgs e)
         {
             OpenFileDialog dialog = new OpenFileDialog();
