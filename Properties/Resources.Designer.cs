@@ -19,7 +19,7 @@ namespace EDPA_Add_In.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -61,8 +61,7 @@ namespace EDPA_Add_In.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to CERTIFICATION 
-        ///I certify that the foregoing is a correct transcript from the electronic sound recording of the proceedings in the above- entitled matter. 
+        ///   Looks up a localized string similar to I certify that the foregoing is a correct transcript from the electronic sound recording of the proceedings in the above- entitled matter. 
         ///
         ///________________________________       ______________ 
         ///Signature of Transcriber                 Date.
