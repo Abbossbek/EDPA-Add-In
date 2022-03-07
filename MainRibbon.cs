@@ -80,7 +80,7 @@ namespace EDPA_Add_In
                         if (variables.Keys.Any(x => lines[i].Range.Text.Contains(x)))
                             foreach (var keyValue in variables)
                             {
-                                if (lines[i].Range.Text.Contains(keyValue.Key))
+                                if (lines[i].Range.Text.Contains(keyValue.Key)) 
                                 {
                                     if (Q != null && lines[i].Range.Text.StartsWith(Q))
                                     {
@@ -96,7 +96,7 @@ namespace EDPA_Add_In
                                                 newDoc.Paragraphs.Last.Range.Text = $"BY {variables[Q].TrimEnd()}\r";
                                                 defaultSetting = true;
                                             }
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"{Regex.Replace(Q, @"[\d-]", string.Empty)}").TrimEnd()}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"{Regex.Replace(Q, @"[\d-]", string.Empty)}").Replace(':', '.').TrimEnd()}\r";
                                         }
                                         else if (!defaultSetting)
                                         {
@@ -108,7 +108,7 @@ namespace EDPA_Add_In
                                     {
                                         if (defaultSetting || lines[i + 1].Range.Text.StartsWith(Q) || lines[i].Range.HighlightColorIndex == WdColorIndex.wdYellow)
                                         {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}").TrimEnd()}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}").Replace(':','.').TrimEnd()}\r";
                                         }
                                         else
                                         {
@@ -126,7 +126,7 @@ namespace EDPA_Add_In
 
                             }
                         else 
-                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.TrimEnd()}\r";
+                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Trim()}\r";
                     }
                 }
                 newDoc.Paragraphs.Last.Range.Text = $"{lines.Last.Range.Text}\r";
