@@ -50,30 +50,21 @@ namespace EDPA_Add_In
                 //text = $"{text.Substring(startIndex).Replace("\r\r", "\r").Trim()}\r{Resources.footerText}";
                 string A = null, Q = null, lastSpeaked = null;
                 bool defaultSetting = false;
-                Paragraphs lines = inputDoc.Range(startIndex).Paragraphs;
+                List<Paragraph> lines = inputDoc.Range(startIndex).Paragraphs.Cast<Paragraph>().Where(x=>!string.IsNullOrWhiteSpace(x.Range.Text.Trim())).ToList();
 
                 for (int i = 1; i < lines.Count - 1; i++)
                 {
-                    if (lines[i].Range.Text.Contains("the court was adjourned") || string.IsNullOrWhiteSpace(lines[i].Range.Text))
-                    {
-                        continue;
-                    }
-                    else if (lines[i].Range.Text.Contains("EXAMINATION"))
+                    if (lines[i].Range.Text.Contains("EXAMINATION"))
                     {
                         newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Substring(0, lines[i].Range.Text.IndexOf("EXAMINATION") + 11)}\r";
                         newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                         var q = lines[i].Range.Text.Substring(lines[i].Range.Text.IndexOf(" BY "));
                         var a = lines[i].Range.Text.Remove(lines[i].Range.Text.IndexOf(" BY ")).Substring(lines[i].Range.Text.IndexOf(" OF ")) + ":";
-                        newDoc.Paragraphs.Last.Range.Text = $"{q}\r";
+                        newDoc.Paragraphs.Last.Range.Text = $"{q.TrimEnd()}\r";
                         Q = variables.FirstOrDefault(x => x.Value == q.Substring(4).Trim()).Key;
                         A = variables.FirstOrDefault(x => x.Value == a.Substring(4).Trim()).Key;
                         defaultSetting = true;
                         lastSpeaked = null;
-                    }
-                    else if (lines[i].Range.Text.Contains("CERTIFICATION"))
-                    {
-                        newDoc.Paragraphs.Last.Range.Text = $"\r\r\r\r\r\r{lines[i]}\r";
-                        newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                     }
                     else
                     {
@@ -87,9 +78,16 @@ namespace EDPA_Add_In
                                         if (keywords.Any(x => lines[i].Range.Text.ToLower().Contains(x)))
                                         {
                                             newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"\t\t{variables[Q]}").TrimEnd()}\r";
+                                            lastSpeaked = Q;
                                             continue;
                                         }
-                                        if (lastSpeaked == A || lastSpeaked == Q || lastSpeaked == null)
+                                        if (lines[i].Range.HighlightColorIndex == WdColorIndex.wdYellow)
+                                        {
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(Q, $"\t\t{variables[Q]}").TrimEnd()}\r";
+                                            lastSpeaked = Q;
+                                            continue;
+                                        }
+                                        if (lastSpeaked == A || lastSpeaked == Q || lastSpeaked == null || lastSpeaked != A && lastSpeaked != Q && lines[i + 1].Range.Text.StartsWith(A))
                                         {
                                             if (!defaultSetting)
                                             {
@@ -106,7 +104,13 @@ namespace EDPA_Add_In
                                     }
                                     else if (A != null && lines[i].Range.Text.StartsWith(A))
                                     {
-                                        if (defaultSetting || lines[i + 1].Range.Text.StartsWith(Q) || lines[i].Range.HighlightColorIndex == WdColorIndex.wdYellow)
+                                        if (lines[i].Range.HighlightColorIndex == WdColorIndex.wdYellow)
+                                        {
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"\t\t{variables[A]}").TrimEnd()}\r";
+                                            lastSpeaked = A;
+                                            continue;
+                                        }
+                                        if (defaultSetting || lines[i + 1].Range.Text.StartsWith(Q))
                                         {
                                             newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}").Replace(':','.').TrimEnd()}\r";
                                         }
@@ -125,11 +129,24 @@ namespace EDPA_Add_In
                                 }
 
                             }
-                        else 
-                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Trim()}\r";
+                        else
+                            newDoc.Paragraphs.Last.Range.Text = $"\t{lines[i].Range.Text.Trim()}\r";
                     }
                 }
-                newDoc.Paragraphs.Last.Range.Text = $"{lines.Last.Range.Text}\r";
+                if (lines.Last().Range.Text.Contains("court was adjourned"))
+                {
+                    newDoc.Paragraphs.Last.Range.Text = "(Court adjourned)\r";
+                }
+                else
+                    newDoc.Paragraphs.Last.Range.Text = $"{lines.Last().Range.Text}\r";
+                var page = newDoc.Paragraphs.Last.Range.Information[WdInformation.wdActiveEndPageNumber];
+                while (page == newDoc.Paragraphs.Last.Range.Information[WdInformation.wdActiveEndPageNumber])
+                {
+                    newDoc.Paragraphs.Last.Range.InsertParagraphAfter();
+                }
+                //newDoc.Paragraphs.Last.Range.InsertBreak(WdBreakType.wdPageBreak);
+                newDoc.Paragraphs.Last.Range.Text = $"CERTIFICATION\r";
+                newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                 newDoc.Paragraphs.Last.Range.Text = $"{Resources.footerText}\r";
 
                 //var directExamIndex = text.IndexOf("DIRECT EXAMINATION");
