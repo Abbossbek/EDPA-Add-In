@@ -36,7 +36,7 @@ namespace EDPA_Add_In
                 var text = inputDoc.Range(0, inputDoc.Characters.Count).Text;
                 var variablesText = inputDoc.Range(0, text.IndexOf("PROCEEDINGS"));
                 var variables = new Dictionary<string, string>();
-                Index indexPlaintiff = null, indexDefendant = null;
+                var indexes = new List<Index>();
                 var exhibits = new List<Exhibit>();
                 foreach (Paragraph parag in variablesText.Paragraphs)
                 {
@@ -45,9 +45,9 @@ namespace EDPA_Add_In
                         var values = parag.Range.Text.Contains('(') ? parag.Range.Text.Remove(parag.Range.Text.IndexOf('(')).Split(':') : parag.Range.Text.Split(':');
                         variables.Add($"{values[0].Trim()}:", $"{values[1].Trim()}:");
                         if (parag.Range.Text.Contains("Plaintiff") && !parag.Range.Text.Contains("Examiner"))
-                            indexPlaintiff = new Index { Witness = values[1].Trim() };
+                            indexes.Add(new Index { Witness = values[1].Trim(), Type = "Plaintiff" });
                         if (parag.Range.Text.Contains("Defendant") && !parag.Range.Text.Contains("Examiner"))
-                            indexDefendant = new Index { Witness = values[1].Trim() };
+                            indexes.Add(new Index { Witness = values[1].Trim(), Type = "Defendant" });
                     }
                 }
                 File.Copy(Settings.Default.TemplateFilePath, dialog.FileName, true);
@@ -72,17 +72,19 @@ namespace EDPA_Add_In
                         A = variables.FirstOrDefault(x => x.Value == a.Substring(4).Trim()).Key;
                         if (lines[i].Range.Text.Contains("DIRECT"))
                         {
-                            if (a.Contains(indexDefendant.Witness))
-                                indexDefendant.DirectPage = pageNumber;
-                            if (a.Contains(indexPlaintiff.Witness))
-                                indexPlaintiff.DirectPage = pageNumber;
+                            foreach (var index in indexes)
+                            {
+                                if (a.Contains(index.Witness))
+                                    index.DirectPage = pageNumber;
+                            }
                         }
                         if (lines[i].Range.Text.Contains("CROSS"))
                         {
-                            if (a.Contains(indexDefendant.Witness))
-                                indexDefendant.CrossPage = pageNumber;
-                            if (a.Contains(indexPlaintiff.Witness))
-                                indexPlaintiff.CrossPage = pageNumber;
+                            foreach (var index in indexes)
+                            {
+                                if (a.Contains(index.Witness))
+                                    index.CrossPage = pageNumber;
+                            }
                         }
                         defaultSetting = true;
                         lastSpeaked = null;
@@ -133,7 +135,7 @@ namespace EDPA_Add_In
                                         }
                                         if (defaultSetting || lines[i + 1].Range.Text.StartsWith(Q))
                                         {
-                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}").Replace(':','.').TrimEnd()}\r";
+                                            newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Replace(A, $"{Regex.Replace(A, @"[\d-]", string.Empty)}").Replace(':', '.').TrimEnd()}\r";
                                         }
                                         else
                                         {
@@ -184,14 +186,20 @@ namespace EDPA_Add_In
 
                 try
                 {
-                    var plaintiffRow = newDoc.Tables[3].Rows[4];
-                    plaintiffRow.Cells[1].Range.Text = $"{indexPlaintiff.Witness}";
-                    plaintiffRow.Cells[2].Range.Text = indexPlaintiff.DirectPage.ToString();
-                    plaintiffRow.Cells[3].Range.Text = indexPlaintiff.CrossPage.ToString();
-                    var defendantRow = newDoc.Tables[3].Rows[9];
-                    defendantRow.Cells[1].Range.Text = $"{indexDefendant.Witness}";
-                    defendantRow.Cells[2].Range.Text = indexDefendant.DirectPage.ToString();
-                    defendantRow.Cells[3].Range.Text = indexDefendant.CrossPage.ToString();
+                    foreach (var index in indexes.Where(x=>x.Type == "Plaintiff"))
+                    {
+                        var plaintiffRow = newDoc.Tables[3].Rows.Add(newDoc.Tables[3].Rows[4]);
+                        plaintiffRow.Cells[1].Range.Text = $"{index.Witness}";
+                        plaintiffRow.Cells[2].Range.Text = index.DirectPage.ToString();
+                        plaintiffRow.Cells[3].Range.Text = index.CrossPage.ToString();
+                    }
+                    foreach (var index in indexes.Where(x=>x.Type == "Defendant"))
+                    {
+                        var plaintiffRow = newDoc.Tables[3].Rows.Add(newDoc.Tables[3].Rows[10]);
+                        plaintiffRow.Cells[1].Range.Text = $"{index.Witness}";
+                        plaintiffRow.Cells[2].Range.Text = index.DirectPage.ToString();
+                        plaintiffRow.Cells[3].Range.Text = index.CrossPage.ToString();
+                    }
                     foreach (var exhibit in exhibits)
                     {
                         var exhibitRow = newDoc.Tables[4].Rows.Add();

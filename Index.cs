@@ -9,6 +9,7 @@ namespace EDPA_Add_In
     class Index
     {
         public string Witness { get; set; }
+        public string Type { get; set; }
         public int DirectPage { get; set; }
         public int CrossPage { get; set; }
         public int RedirectPage { get; set; }
