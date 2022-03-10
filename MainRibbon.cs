@@ -70,7 +70,7 @@ namespace EDPA_Add_In
                         newDoc.Paragraphs.Last.Range.Text = $"{q.TrimEnd()}\r";
                         Q = variables.FirstOrDefault(x => x.Value == q.Substring(4).Trim()).Key;
                         A = variables.FirstOrDefault(x => x.Value == a.Substring(4).Trim()).Key;
-                        if (lines[i].Range.Text.Contains("DIRECT"))
+                        if (lines[i].Range.Text.Contains("DIRECT") && !lines[i].Range.Text.Contains("REDIRECT"))
                         {
                             foreach (var index in indexes)
                             {
@@ -78,12 +78,28 @@ namespace EDPA_Add_In
                                     index.DirectPage = pageNumber;
                             }
                         }
-                        if (lines[i].Range.Text.Contains("CROSS"))
+                        if (lines[i].Range.Text.Contains("REDIRECT"))
+                        {
+                            foreach (var index in indexes)
+                            {
+                                if (a.Contains(index.Witness))
+                                    index.RedirectPage = pageNumber;
+                            }
+                        }
+                        if (lines[i].Range.Text.Contains("CROSS") && !lines[i].Range.Text.Contains("RECROSS"))
                         {
                             foreach (var index in indexes)
                             {
                                 if (a.Contains(index.Witness))
                                     index.CrossPage = pageNumber;
+                            }
+                        }
+                        if (lines[i].Range.Text.Contains("RECROSS"))
+                        {
+                            foreach (var index in indexes)
+                            {
+                                if (a.Contains(index.Witness))
+                                    index.RecrossPage = pageNumber;
                             }
                         }
                         defaultSetting = true;
@@ -155,20 +171,18 @@ namespace EDPA_Add_In
                         else
                         {
                             newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.TrimEnd()}\r";
-                            if (lines[i].Range.Text.Contains("Exhibit") && lines[i].Range.Text.Contains("marked"))
+                            if (lines[i].Range.Text.ToLower().Contains("exhibit") && lines[i].Range.Text.ToLower().Contains("marked"))
                             {
                                 newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                                 var exhibit = new Exhibit { Page = newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Range.Information[WdInformation.wdActiveEndPageNumber] };
-                                if (lines[i].Range.Text.Contains("Defendant"))
-                                    exhibit.Name = $"D-{lines[i].Range.Text.Substring(lines[i].Range.Text.IndexOf("-") + 1, 2)}";
-                                if (lines[i].Range.Text.Contains("Plaintiff"))
-                                    exhibit.Name = $"P-{lines[i].Range.Text.Substring(lines[i].Range.Text.IndexOf("-") + 1, 2)}";
+                                var index = lines[i].Range.Text.ToLower().IndexOf("number") + 7;
+                                exhibit.Name = $"{lines[i].Range.Text.Substring(index, lines[i].Range.Text.ToLower().IndexOf("was") - index)}";
                                 exhibits.Add(exhibit);
                             }
                         }
                     }
                 }
-                if (lines.Last().Range.Text.Contains("court was adjourned"))
+                if (lines.Last().Range.Text.ToLower().Contains("court was adjourned"))
                 {
                     newDoc.Paragraphs.Last.Range.Text = "(Court adjourned)\r";
                 }
@@ -186,27 +200,32 @@ namespace EDPA_Add_In
 
                 try
                 {
-                    foreach (var index in indexes.Where(x=>x.Type == "Plaintiff"))
+                    foreach (var index in indexes.Where(x => x.Type == "Plaintiff"))
                     {
                         var plaintiffRow = newDoc.Tables[3].Rows.Add(newDoc.Tables[3].Rows[4]);
                         plaintiffRow.Cells[1].Range.Text = $"{index.Witness}";
                         plaintiffRow.Cells[2].Range.Text = index.DirectPage.ToString();
                         plaintiffRow.Cells[3].Range.Text = index.CrossPage.ToString();
+                        plaintiffRow.Cells[4].Range.Text = index.RedirectPage.ToString();
+                        plaintiffRow.Cells[5].Range.Text = index.RecrossPage.ToString();
                     }
-                    foreach (var index in indexes.Where(x=>x.Type == "Defendant"))
+                    foreach (var index in indexes.Where(x => x.Type == "Defendant"))
                     {
                         var plaintiffRow = newDoc.Tables[3].Rows.Add(newDoc.Tables[3].Rows[10]);
                         plaintiffRow.Cells[1].Range.Text = $"{index.Witness}";
                         plaintiffRow.Cells[2].Range.Text = index.DirectPage.ToString();
                         plaintiffRow.Cells[3].Range.Text = index.CrossPage.ToString();
+                        plaintiffRow.Cells[4].Range.Text = index.RedirectPage.ToString();
+                        plaintiffRow.Cells[5].Range.Text = index.RecrossPage.ToString();
                     }
                     foreach (var exhibit in exhibits)
                     {
                         var exhibitRow = newDoc.Tables[4].Rows.Add();
                         exhibitRow.Cells[1].Range.Text = $"{exhibit.Name}";
-                        exhibitRow.Cells[2].Range.Text = $"Letter to Judge";
+                        //exhibitRow.Cells[2].Range.Text = $"Letter to Judge";
                         exhibitRow.Cells[3].Range.Text = exhibit.Page.ToString();
                     }
+                    newDoc.Tables[4].Rows[2].Delete();
                 }
                 catch
                 {
