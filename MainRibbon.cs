@@ -34,7 +34,7 @@ namespace EDPA_Add_In
             {
                 var inputDoc = Globals.ThisAddIn.Application.ActiveDocument;
                 var text = inputDoc.Range(0, inputDoc.Characters.Count).Text;
-                var variablesText = inputDoc.Range(0, text.IndexOf("PROCEEDINGS"));
+                var variablesText = inputDoc.Range(0, text.ToUpper().IndexOf("PROCEEDINGS"));
                 var variables = new Dictionary<string, string>();
                 var indexes = new List<Index>();
                 var exhibits = new List<Exhibit>();
@@ -44,15 +44,15 @@ namespace EDPA_Add_In
                     {
                         var values = parag.Range.Text.Contains('(') ? parag.Range.Text.Remove(parag.Range.Text.IndexOf('(')).Split(':') : parag.Range.Text.Split(':');
                         variables.Add($"{values[0].Trim()}:", $"{values[1].Trim()}:");
-                        if (parag.Range.Text.Contains("Plaintiff") && !parag.Range.Text.Contains("Examiner"))
-                            indexes.Add(new Index { Witness = values[1].Trim(), Type = "Plaintiff" });
-                        if (parag.Range.Text.Contains("Defendant") && !parag.Range.Text.Contains("Examiner"))
+                        if (parag.Range.Text.ToLower().Contains("plaintiff") && !parag.Range.Text.ToLower().Contains("examiner"))
+                            indexes.Add(new Index { Witness = values[1].Trim(), Type = "Plaintiff" });  
+                        if (parag.Range.Text.ToLower().Contains("defendant") && !parag.Range.Text.ToLower().Contains("examiner"))
                             indexes.Add(new Index { Witness = values[1].Trim(), Type = "Defendant" });
                     }
                 }
                 File.Copy(Settings.Default.TemplateFilePath, dialog.FileName, true);
                 var newDoc = Globals.ThisAddIn.Application.Documents.Open(dialog.FileName);
-                var startIndex = text.IndexOf("\r\r", text.IndexOf("PROCEEDINGS"));
+                var startIndex = text.IndexOf("\r\r", text.ToUpper().IndexOf("PROCEEDINGS"));
                 //text = $"{text.Substring(startIndex).Replace("\r\r", "\r").Trim()}\r{Resources.footerText}";
                 string A = null, Q = null, lastSpeaked = null;
                 bool defaultSetting = false;
@@ -62,15 +62,15 @@ namespace EDPA_Add_In
                 {
                     if (lines[i].Range.Text.Contains("EXAMINATION"))
                     {
-                        newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Substring(0, lines[i].Range.Text.IndexOf("EXAMINATION") + 11)}\r";
+                        newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.Substring(0, lines[i].Range.Text.ToUpper().IndexOf("EXAMINATION") + 11)}\r";
                         newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                         var pageNumber = newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Range.Information[WdInformation.wdActiveEndPageNumber];
-                        var q = lines[i].Range.Text.Substring(lines[i].Range.Text.IndexOf(" BY "));
-                        var a = lines[i].Range.Text.Remove(lines[i].Range.Text.IndexOf(" BY ")).Substring(lines[i].Range.Text.IndexOf(" OF ")) + ":";
+                        var q = lines[i].Range.Text.Substring(lines[i].Range.Text.ToUpper().IndexOf(" BY "));
+                        var a = lines[i].Range.Text.Remove(lines[i].Range.Text.ToUpper().IndexOf(" BY ")).Substring(lines[i].Range.Text.ToUpper().IndexOf(" OF ")) + ":";
                         newDoc.Paragraphs.Last.Range.Text = $"{q.TrimEnd()}\r";
                         Q = variables.FirstOrDefault(x => x.Value == q.Substring(4).Trim()).Key;
                         A = variables.FirstOrDefault(x => x.Value == a.Substring(4).Trim()).Key;
-                        if (lines[i].Range.Text.Contains("DIRECT") && !lines[i].Range.Text.Contains("REDIRECT"))
+                        if (lines[i].Range.Text.ToUpper().Contains("DIRECT") && !lines[i].Range.Text.ToUpper().Contains("REDIRECT"))
                         {
                             foreach (var index in indexes)
                             {
@@ -78,7 +78,7 @@ namespace EDPA_Add_In
                                     index.DirectPage = pageNumber;
                             }
                         }
-                        if (lines[i].Range.Text.Contains("REDIRECT"))
+                        if (lines[i].Range.Text.ToUpper().Contains("REDIRECT"))
                         {
                             foreach (var index in indexes)
                             {
@@ -86,7 +86,7 @@ namespace EDPA_Add_In
                                     index.RedirectPage = pageNumber;
                             }
                         }
-                        if (lines[i].Range.Text.Contains("CROSS") && !lines[i].Range.Text.Contains("RECROSS"))
+                        if (lines[i].Range.Text.ToUpper().Contains("CROSS") && !lines[i].Range.Text.ToUpper().Contains("RECROSS"))
                         {
                             foreach (var index in indexes)
                             {
@@ -94,7 +94,7 @@ namespace EDPA_Add_In
                                     index.CrossPage = pageNumber;
                             }
                         }
-                        if (lines[i].Range.Text.Contains("RECROSS"))
+                        if (lines[i].Range.Text.ToUpper().Contains("RECROSS"))
                         {
                             foreach (var index in indexes)
                             {
@@ -173,10 +173,12 @@ namespace EDPA_Add_In
                             newDoc.Paragraphs.Last.Range.Text = $"{lines[i].Range.Text.TrimEnd()}\r";
                             if (lines[i].Range.Text.ToLower().Contains("exhibit") && lines[i].Range.Text.ToLower().Contains("marked"))
                             {
+
                                 newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                                 var exhibit = new Exhibit { Page = newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Range.Information[WdInformation.wdActiveEndPageNumber] };
-                                var index = lines[i].Range.Text.ToLower().IndexOf("number") + 7;
-                                exhibit.Name = $"{lines[i].Range.Text.Substring(index, lines[i].Range.Text.ToLower().IndexOf("was") - index)}";
+                                var index = lines[i].Range.Text.ToLower().IndexOf("exhibit") + 8;
+                                var index2 = (lines[i].Range.Text.ToLower().Contains("received") ? lines[i].Range.Text.ToLower().IndexOf("received") : lines[i].Range.Text.ToLower().IndexOf("marked")) - index;
+                                exhibit.Name = $"{lines[i].Range.Text.Substring(index, index2)}";
                                 exhibits.Add(exhibit);
                             }
                         }
