@@ -177,7 +177,7 @@ namespace EDPA_Add_In
                                 newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Alignment = WdParagraphAlignment.wdAlignParagraphCenter;
                                 var exhibit = new Exhibit { Page = newDoc.Paragraphs[newDoc.Paragraphs.Count - 1].Range.Information[WdInformation.wdActiveEndPageNumber] };
                                 var index = lines[i].Range.Text.ToLower().IndexOf("exhibit") + 8;
-                                var index2 = (lines[i].Range.Text.ToLower().Contains("received") ? lines[i].Range.Text.ToLower().IndexOf("received") : lines[i].Range.Text.ToLower().IndexOf("marked")) - index;
+                                var index2 = (lines[i].Range.Text.ToLower().Contains("marked") ? lines[i].Range.Text.ToLower().IndexOf("marked") : lines[i].Range.Text.ToLower().IndexOf("received")) - index;
                                 exhibit.Name = $"{lines[i].Range.Text.Substring(index, index2)}";
                                 exhibits.Add(exhibit);
                             }
